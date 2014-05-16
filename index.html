@@ -1,0 +1,171 @@
+<!doctype html> 
+<html lang="en"> 
+<head> 
+	<meta charset="UTF-8" />
+    <title>Phaser - Making your first game, part 9</title>
+	<script type="text/javascript" src="js/phaser.min.js"></script>
+    <style type="text/css">
+        body {
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+
+<script type="text/javascript">
+
+var game = new Phaser.Game(900, 900, Phaser.AUTO, '', { preload: preload, create: create, update: update, render: render });
+
+function preload() {
+}
+
+var NUMBER_OF_CELLS = 80;
+var CELL_SIZE = 10;
+var cellMap = [];
+var cells;
+var rec = 0;
+
+function create() {
+    cells = game.add.group();
+    game.time.events.repeat(Phaser.Timer.SECOND/40, NUMBER_OF_CELLS, createCellParameters, this);
+    game.time.events.add(Phaser.Timer.SECOND * 2, alignMap, this);
+    game.time.events.add(Phaser.Timer.SECOND * 2.1, getIntersections, this);
+    game.time.events.add(Phaser.Timer.SECOND * 2.2, pushIntersections, this);
+    
+}
+
+function update() {
+}
+
+function render() {
+}
+   
+function createCellParameters() {
+    //generate angle and distance from centerpoint for room spawn
+    var angle = game.rnd.integerInRange(0,360);
+    var radius = game.rnd.integerInRange(0,120) * CELL_SIZE;
+        
+    //generate x,y positions to the nearest ten
+    var x = Math.round((Math.sqrt(radius) * Math.cos(angle) * CELL_SIZE) / 10) * 10;
+    var y = Math.round((Math.sqrt(radius) * Math.sin(angle) * CELL_SIZE) / 10) * 10;
+    
+    //generate the size of the room
+    var width = game.rnd.integerInRange(4,12) * CELL_SIZE;
+    var height = game.rnd.integerInRange(4,12) * CELL_SIZE;
+        
+    drawRectangle(x, y, width, height);
+}
+
+function drawRectangle(x, y, width, height) {
+    
+    //push values to secondary array
+    cellMap.push([x,y,width,height,0]);
+    
+    //create image of room to be built in.
+    var bitmap = game.add.bitmapData(width, height);
+    
+    bitmap.context.beginPath();
+    //set color of room
+    bitmap.context.strokeStyle = 'rgba(70, 180, 255, 1)';
+    //set start point to top left position of rectangle
+    bitmap.context.moveTo(0, 0);
+    //draw line to top right corner of rectangle
+    bitmap.context.lineTo(width, 0);
+    //draw line to bottom right corner of rectangle
+    bitmap.context.lineTo(width, height);
+    //draw line to bottom left corner of rectangle
+    bitmap.context.lineTo(0, height);
+    //draw line to start point
+    bitmap.context.lineTo(0, 0);
+    //Create 10px height lines for grid
+    for(var iy = 0; iy <= height - CELL_SIZE; iy+=CELL_SIZE) {
+        bitmap.context.moveTo(0,iy);
+        bitmap.context.lineTo(width,iy);
+    }
+    //create 10px width lines for grid
+    for(var ix = 0; ix <= width - CELL_SIZE; ix+=CELL_SIZE) {
+        bitmap.context.moveTo(ix,0);
+        bitmap.context.lineTo(ix,height);
+    }
+    bitmap.context.stroke();
+
+    //add rectangle(cell) to main group
+    var cell = game.add.image((game.world.centerX + x), (game.world.centerY + y), bitmap);
+    cells.add(cell);
+}
+
+function alignMap() {
+    for(var it = 0; it < cells.length; it++) {
+        cellMap[it].push(it);
+    }
+}
+
+function getIntersections() {
+    for(var it = 0; it < cells.length; it++) {
+        for(var other = 0; other < cells.length; other++) {
+            if (it !== other && AABB(cells.getAt(it).x, cells.getAt(it).x + cells.getAt(it).width, 
+                    cells.getAt(other).x, cells.getAt(other).x + cells.getAt(other).width, 
+                    cells.getAt(it).y, cells.getAt(it).y + cells.getAt(it).height,
+                    cells.getAt(other).y, cells.getAt(other).y + cells.getAt(other).height)){
+                cellMap[it][4]++;
+            }
+        }
+    }
+    //removeIntersections();
+}
+
+function pushIntersections() {
+    for(var it = 0; it < cells.length; it++) {
+        if(cellMap[it][4] > 0) {
+            var angles = [];
+            for(var other = 0; other < cells.length; other++) {
+                if (it !== other && AABB(cells.getAt(it).x, cells.getAt(it).x + cells.getAt(it).width, 
+                        cells.getAt(other).x, cells.getAt(other).x + cells.getAt(other).width, 
+                        cells.getAt(it).y, cells.getAt(it).y + cells.getAt(it).height,
+                        cells.getAt(other).y, cells.getAt(other).y + cells.getAt(other).height)){
+                        
+                    console.log(it + " " + other);
+                    angles.push([cells.getAt(other).x, cells.getAt(other).x + cells.getAt(other).width, 
+                              cells.getAt(other).y, cells.getAt(other).y + cells.getAt(other).height]);
+                    
+                }
+                
+            }
+            console.log(angles);
+        }
+    }
+}
+
+function removeIntersections() {
+    if(rec >= 55) {
+        return;
+    }
+    for(var it = 0; it < cells.length;it++) {
+        if(cellMap[it][4] !== 0) {
+            cells.getAt(it).kill();
+            cells.remove(cells.getAt(it), true);
+            cellMap.splice(it,1)
+            rec++;
+            break;
+            
+        }
+    }
+    console.log(rec + " intersections removed");
+    for(var cit = 0; it < cells.length; it++) {
+        cellMap[cit][4] = 0;
+    }
+    getIntersections();
+}
+function AABB(Ax, AX, Bx, BX, Ay, AY, By, BY) {
+    if (AX < Bx ||
+        BX < Ax ||
+        AY < By ||
+        BY < Ay) {
+            return false;
+    }
+    return true;
+}
+</script>
+
+</body>
+</html>
