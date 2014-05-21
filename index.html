@@ -1,9 +1,9 @@
-<!doctype html> 
-<html lang="en"> 
-<head> 
-	<meta charset="UTF-8" />
-    <title>Phaser - Making your first game, part 9</title>
-	<script type="text/javascript" src="js/phaser.min.js"></script>
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>title yo</title>
+    <script type="text/javascript" src="js/phaser.min.js"></script>
     <style type="text/css">
         body {
             margin: 0;
@@ -20,18 +20,21 @@ function preload() {
 }
 
 var NUMBER_OF_CELLS = 80;
-var CELL_SIZE = 10;
+var CELL_SIZE = 5;
 var cellMap = [];
 var cells;
+var whiteSpace;
 var rec = 0;
 
 function create() {
     cells = game.add.group();
+    whiteSpace = game.add.group();
+    whiteSpace.z = 0;
     game.time.events.repeat(Phaser.Timer.SECOND/40, NUMBER_OF_CELLS, createCellParameters, this);
     game.time.events.add(Phaser.Timer.SECOND * 2, alignMap, this);
     game.time.events.add(Phaser.Timer.SECOND * 2.1, getIntersections, this);
     game.time.events.add(Phaser.Timer.SECOND * 2.2, pushIntersections, this);
-    
+    game.time.events.add(Phaser.Timer.SECOND * 5, fillWhiteSpace, this);
 }
 
 function update() {
@@ -39,31 +42,78 @@ function update() {
 
 function render() {
 }
-   
+
 function createCellParameters() {
     //generate angle and distance from centerpoint for room spawn
     var angle = game.rnd.integerInRange(0,360);
-    var radius = game.rnd.integerInRange(0,120) * CELL_SIZE;
-        
+    var radius = game.rnd.integerInRange(0,100) * CELL_SIZE;
+
     //generate x,y positions to the nearest ten
-    var x = Math.round((Math.sqrt(radius) * Math.cos(angle) * CELL_SIZE) / 10) * 10;
-    var y = Math.round((Math.sqrt(radius) * Math.sin(angle) * CELL_SIZE) / 10) * 10;
-    
+    var x = Math.round((Math.sqrt(radius) * Math.cos(angle) * CELL_SIZE) / CELL_SIZE) * CELL_SIZE;
+    var y = Math.round((Math.sqrt(radius) * Math.sin(angle) * CELL_SIZE) / CELL_SIZE) * CELL_SIZE;
+
     //generate the size of the room
     var width = game.rnd.integerInRange(4,12) * CELL_SIZE;
     var height = game.rnd.integerInRange(4,12) * CELL_SIZE;
-        
+
     drawRectangle(x, y, width, height);
 }
 
-function drawRectangle(x, y, width, height) {
+function fillWhiteSpace() {
+    var x1 = 900;
+    var y1 = 900;
+    var x2 = 0;
+    var y2 = 0;
+    for(var it = 0; it < cells.length; it++) {
+        if(x1 > cells.getAt(it).x)
+            x1 = cells.getAt(it).x;
+        if(x2 < cells.getAt(it).x + cells.getAt(it).width)
+            x2 = cells.getAt(it).x + cells.getAt(it).width;
+        if(y1 > cells.getAt(it).y)
+            y1 = cells.getAt(it).y;
+        if(y2 < cells.getAt(it).y + cells.getAt(it).height)
+            y2 = cells.getAt(it).y + cells.getAt(it).height; 
+    }
+    console.log(x1+" "+x2+" "+y1+" "+y2);
     
+    var bitmap = game.add.bitmapData(x2-x1,y2-y1);
+
+    bitmap.context.beginPath();
+    //set color of room
+    bitmap.context.strokeStyle = 'rgba(255, 255, 255, 1)';
+    //set start point to top left position of rectangle
+    bitmap.context.moveTo(0, 0);
+    //draw line to top right corner of rectangle
+    bitmap.context.lineTo(x2-x1, 0);
+    //draw line to bottom right corner of rectangle
+    bitmap.context.lineTo(x2-x1, y2-y1);
+    //draw line to bottom left corner of rectangle
+    bitmap.context.lineTo(0, y2-y1);
+    //draw line to start point
+    bitmap.context.lineTo(0, 0);
+    //Create 10px height lines for grid
+    for(var iy = 0; iy <= y2-y1 - CELL_SIZE; iy+=CELL_SIZE) {
+        bitmap.context.moveTo(0,iy);
+        bitmap.context.lineTo(x2-x1,iy);
+    }
+    //create 10px width lines for grid
+    for(var ix = 0; ix <= x2-x1 - CELL_SIZE; ix+=CELL_SIZE) {
+        bitmap.context.moveTo(ix,0);
+        bitmap.context.lineTo(ix,y2-y1);
+    }
+    bitmap.context.stroke();
+    var temp = game.add.image(x1, y1, bitmap);
+    whiteSpace.add(temp);
+    
+}
+function drawRectangle(x, y, width, height) {
+
     //push values to secondary array
     cellMap.push([x,y,width,height,0]);
-    
+
     //create image of room to be built in.
     var bitmap = game.add.bitmapData(width, height);
-    
+
     bitmap.context.beginPath();
     //set color of room
     bitmap.context.strokeStyle = 'rgba(70, 180, 255, 1)';
@@ -91,6 +141,7 @@ function drawRectangle(x, y, width, height) {
 
     //add rectangle(cell) to main group
     var cell = game.add.image((game.world.centerX + x), (game.world.centerY + y), bitmap);
+    //cell.anchor.setTo(0.5,0.5);
     cells.add(cell);
 }
 
@@ -101,69 +152,125 @@ function alignMap() {
 }
 
 function getIntersections() {
+    //iterate through rectangles in cells
     for(var it = 0; it < cells.length; it++) {
+        //second thread of iterations to compare against cells.
         for(var other = 0; other < cells.length; other++) {
-            if (it !== other && AABB(cells.getAt(it).x, cells.getAt(it).x + cells.getAt(it).width, 
-                    cells.getAt(other).x, cells.getAt(other).x + cells.getAt(other).width, 
+            //checks for intersects via AABB and to see that its not comparing itself
+            if (it !== other && AABB(cells.getAt(it).x, cells.getAt(it).x + cells.getAt(it).width,
+                    cells.getAt(other).x, cells.getAt(other).x + cells.getAt(other).width,
                     cells.getAt(it).y, cells.getAt(it).y + cells.getAt(it).height,
                     cells.getAt(other).y, cells.getAt(other).y + cells.getAt(other).height)){
                 cellMap[it][4]++;
             }
         }
     }
-    //removeIntersections();
 }
 
 function pushIntersections() {
+    console.log(rec);
+    //iterate through rectangles in cells
     for(var it = 0; it < cells.length; it++) {
+        //check to see if the current rectangle has any intersects.
         if(cellMap[it][4] > 0) {
-            var angles = [];
+            //angles variable for vector math.
+            var centers = [];
+            //push centers of moving rectangle to index 0 of center array
+            centers.push([cells.getAt(it).x + (cells.getAt(it).width/2), cells.getAt(it).y + (cells.getAt(it).height/2)]);
+            //refind intersects(antiquated: will get resolved in later version)
             for(var other = 0; other < cells.length; other++) {
-                if (it !== other && AABB(cells.getAt(it).x, cells.getAt(it).x + cells.getAt(it).width, 
-                        cells.getAt(other).x, cells.getAt(other).x + cells.getAt(other).width, 
+                //checks for intersects via AABB and to see that its not comparing itself
+                if (it !== other && AABB(cells.getAt(it).x, cells.getAt(it).x + cells.getAt(it).width,
+                        cells.getAt(other).x, cells.getAt(other).x + cells.getAt(other).width,
                         cells.getAt(it).y, cells.getAt(it).y + cells.getAt(it).height,
                         cells.getAt(other).y, cells.getAt(other).y + cells.getAt(other).height)){
-                        
-                    console.log(it + " " + other);
-                    angles.push([cells.getAt(other).x, cells.getAt(other).x + cells.getAt(other).width, 
-                              cells.getAt(other).y, cells.getAt(other).y + cells.getAt(other).height]);
-                    
+
+                    centers.push([cells.getAt(other).x + (cells.getAt(other).width/2), cells.getAt(other).y + (cells.getAt(other).height/2)]);
+
                 }
-                
             }
-            console.log(angles);
+            pushRectangle(calculateResultantVector(centers), it);
+            clearIntersections();
+            getIntersections();
+            sleep(1000, hasIntersections);
         }
     }
 }
 
-function removeIntersections() {
-    if(rec >= 55) {
-        return;
+function pushRectangle(vector, it) {
+    if(vector === 0) {
+        cells.getAt(it).x += CELL_SIZE;
+    }else if (vector === 90) {
+        cells.getAt(it).y += CELL_SIZE;
+    }else if (vector === 180) {
+        cells.getAt(it).x -= CELL_SIZE;
+    }else if (vector === 270) {
+        cells.getAt(it).y -= CELL_SIZE;
+    }else if (vector < 90) {
+        cells.getAt(it).x += CELL_SIZE;
+        cells.getAt(it).y += CELL_SIZE;
+    }else if (vector < 180) {
+        cells.getAt(it).x -= CELL_SIZE;
+        cells.getAt(it).y += CELL_SIZE;
+    }else if (vector < 270) {
+        cells.getAt(it).x -= CELL_SIZE;
+        cells.getAt(it).y -= CELL_SIZE;
+    }else{
+        cells.getAt(it).x += CELL_SIZE;
+        cells.getAt(it).y -= CELL_SIZE;
     }
-    for(var it = 0; it < cells.length;it++) {
-        if(cellMap[it][4] !== 0) {
-            cells.getAt(it).kill();
-            cells.remove(cells.getAt(it), true);
-            cellMap.splice(it,1)
+}
+
+function hasIntersections() {
+    for(var it = 0; it < cells.length; it++) {
+        if(cellMap[it][4] !== 0){
             rec++;
-            break;
-            
+            pushIntersections();
         }
     }
-    console.log(rec + " intersections removed");
-    for(var cit = 0; it < cells.length; it++) {
-        cellMap[cit][4] = 0;
-    }
-    getIntersections();
 }
+function clearIntersections() {
+    for(var it = 0; it < cells.length; it++) {
+        cellMap[it][4] = 0;
+    }
+}
+
+function calculateResultantVector(centers) {
+    var sumX = 0;
+    var sumY = 0;
+    
+    for(var it = 1; it < centers.length; it++) {
+        sumX += centers[0][0] - centers[it][0];
+        sumY += centers[0][1] - centers[it][1];
+    }
+    //console.log('Resultant Vector - x: ' + sumX + ' y: ' + sumY + ' h: ' + Math.sqrt(Math.pow(sumX,2)) + ' angle: ' + fixedAngle(sumX,sumY));
+    return fixedAngle(sumX, sumY);
+}
+
+function fixedAngle(x,y) {
+    if(x < 0) {
+        return (Math.atan(y/x) * (180 / Math.PI)) + 180;
+    }else if(y < 0) {
+        return (Math.atan(y/x) * (180 / Math.PI)) + 360;
+    }
+    return Math.atan(y/x) * (180 / Math.PI);
+    
+}
+
 function AABB(Ax, AX, Bx, BX, Ay, AY, By, BY) {
-    if (AX < Bx ||
-        BX < Ax ||
-        AY < By ||
-        BY < Ay) {
+    if (AX <= Bx ||
+        BX <= Ax ||
+        AY <= By ||
+        BY <= Ay) {
             return false;
     }
     return true;
+}
+
+function sleep(millis, callback) {
+    setTimeout(function()
+            { callback(); }
+    , millis);
 }
 </script>
 
