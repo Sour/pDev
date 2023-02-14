@@ -39,6 +39,66 @@
     Because of the variety in cell sizes, the walls of the corridors will be twisty and uneven, perfect for a dungeon.
 
 
+Here's a step-by-step guide to create a tilemap in Unity 2D with scripts:
+
+Create a new Unity 2D project.
+
+In the Assets panel, right-click and select Create > Folder. Rename the folder to "Tilemap".
+
+In the Tilemap folder, right-click and select Create > Tile. Rename the Tile to "GroundTile".
+
+Double-click the GroundTile to open it in the Tile Editor.
+
+In the Tile Editor, click on the "Add Component" button and select "Sprite Renderer".
+
+In the Sprite Renderer component, click on the "Sprite" field and select the sprite that you want to use for the ground tile.
+
+Save the GroundTile by going to File > Save Assets.
+
+In the Assets panel, right-click on the Tilemap folder and select Create > Tilemap.
+
+In the Tilemap GameObject, add a Grid component by clicking the "Add Component" button and selecting "Grid".
+
+In the Tilemap GameObject, add a Tilemap Renderer component by clicking the "Add Component" button and selecting "Tilemap Renderer".
+
+In the Tilemap GameObject, add a Tilemap Collider 2D component by clicking the "Add Component" button and selecting "Tilemap Collider 2D".
+
+Create a new script in the Assets panel by right-clicking and selecting Create > C# Script. Rename the script to "TilemapGenerator".
+
+Open the TilemapGenerator script in Visual Studio.
+
+In the TilemapGenerator script, add the following code:
+
+csharp
+Copy code
+using UnityEngine;
+using UnityEngine.Tilemaps;
+
+public class TilemapGenerator : MonoBehaviour
+{
+    public Tilemap tilemap;
+    public TileBase groundTile;
+
+    private void Start()
+    {
+        for (int x = tilemap.cellBounds.xMin; x < tilemap.cellBounds.xMax; x++)
+        {
+            for (int y = tilemap.cellBounds.yMin; y < tilemap.cellBounds.yMax; y++)
+            {
+                Vector3Int tilePosition = new Vector3Int(x, y, 0);
+                tilemap.SetTile(tilePosition, groundTile);
+            }
+        }
+    }
+}
+In the Unity Editor, select the Tilemap GameObject and in the Inspector panel, drag the GroundTile from the Assets panel to the "Ground Tile" field in the TilemapGenerator script.
+
+In the Unity Editor, select the Tilemap GameObject and in the Inspector panel, drag the Tilemap component to the "Tilemap" field in the TilemapGenerator script.
+
+Save the scene and press the Play button to test the tilemap.
+
+This is a basic example of how to create a tilemap in Unity 2D with scripts. You can expand on this by adding more tiles, creating a custom inspector, or generating the tilemap procedurally based on certain conditions.
+
 
 [1] - https://en.wikipedia.org/wiki/Normal_distribution
 [2] - http://en.wikipedia.org/wiki/Delaunay_triangulation
